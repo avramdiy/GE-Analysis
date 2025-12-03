@@ -20,4 +20,6 @@
 
 ### 4th Commit
 
+- Added `/volume_chart` route to display bar charts of volume statistics (mean, median, max, min) for each timeframe. Charts are generated using matplotlib and embedded as base64 images in HTML.
+
 ### 5th Commit

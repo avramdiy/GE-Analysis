@@ -185,6 +185,82 @@ def correlations():
     return render_template_string(html)
 
 
+@app.route("/volume_chart")
+def volume_chart():
+    """Generate and display a bar chart of volume statistics for each timeframe."""
+    tf = TIMEFRAMES
+
+    def generate_volume_bar(df, title):
+        """Generate a base64-encoded volume bar chart."""
+        if "Volume" not in df.columns:
+            return None
+
+        # Calculate volume statistics
+        vol_stats = {
+            "Mean": df["Volume"].mean(),
+            "Median": df["Volume"].median(),
+            "Max": df["Volume"].max(),
+            "Min": df["Volume"].min(),
+        }
+
+        # Create bar chart
+        plt.figure(figsize=(8, 6))
+        plt.bar(vol_stats.keys(), vol_stats.values(), color=["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"])
+        plt.title(title)
+        plt.ylabel("Volume")
+        plt.xlabel("Statistic")
+        plt.ticklabel_format(style="plain", axis="y")
+        plt.tight_layout()
+
+        # Save to bytes buffer
+        buf = io.BytesIO()
+        plt.savefig(buf, format="png", dpi=80)
+        buf.seek(0)
+        plt.close()
+
+        # Encode to base64
+        img_base64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+        return img_base64
+
+    # Generate bar charts for each timeframe
+    bc_early = generate_volume_bar(tf["early"], "Volume Statistics: Early (1962-1989)")
+    bc_mid = generate_volume_bar(tf["mid"], "Volume Statistics: Mid (1990-2004)")
+    bc_recent = generate_volume_bar(tf["recent"], "Volume Statistics: Recent (2005-2017)")
+
+    # Build HTML with embedded images
+    html = """<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>GE Volume Analysis</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  </head>
+  <body class="p-4">
+    <div class="container">
+      <h1>GE Volume Statistics by Timeframe</h1>
+      <p>Bar charts showing mean, median, max, and min daily trading volume for each period.</p>
+      <div class="row mt-4">
+"""
+
+    if bc_early:
+        html += f'<div class="col-md-4"><img src="data:image/png;base64,{bc_early}" alt="Early" style="width:100%;"></div>'
+    if bc_mid:
+        html += f'<div class="col-md-4"><img src="data:image/png;base64,{bc_mid}" alt="Mid" style="width:100%;"></div>'
+    if bc_recent:
+        html += f'<div class="col-md-4"><img src="data:image/png;base64,{bc_recent}" alt="Recent" style="width:100%;"></div>'
+
+    html += """      </div>
+      <div class="mt-4">
+        <p><a href="/">← Back to main</a></p>
+      </div>
+    </div>
+  </body>
+</html>"""
+
+    return render_template_string(html)
+
+
 @app.route("/download")
 def download():
     """Send the raw data file for download."""
