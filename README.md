@@ -12,6 +12,8 @@
 
 ### 2nd Commit
 
+- Dropped `OpenInt` from the master DataFrame and created three time-sliced DataFrames (`early` 1962–1989, `mid` 1990–2004, `recent` 2005–2017) available in `app/data.py` via the `TIMEFRAMES` dictionary.
+
 ### 3rd Commit
 
 ### 4th Commit
