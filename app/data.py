@@ -1,6 +1,10 @@
 from flask import Flask, render_template_string, send_file, abort
 import pandas as pd
 from pathlib import Path
+import matplotlib.pyplot as plt
+import seaborn as sns
+import io
+import base64
 
 app = Flask(__name__)
 
@@ -108,6 +112,76 @@ def timeframes_summary():
     for k, v in rows.items():
         html += f"<li><strong>{k}</strong>: {v} rows</li>"
     html += "</ul>"
+    return render_template_string(html)
+
+
+@app.route("/correlations")
+def correlations():
+    """Generate and display correlation heatmaps for each timeframe."""
+    tf = TIMEFRAMES
+
+    def generate_heatmap(df, title):
+        """Generate a base64-encoded correlation heatmap image."""
+        # Select only numeric columns
+        numeric_df = df.select_dtypes(include=["number"])
+        if numeric_df.empty or numeric_df.shape[1] < 2:
+            return None  # Not enough numeric columns
+
+        # Compute correlation matrix
+        corr = numeric_df.corr()
+
+        # Create figure and heatmap
+        plt.figure(figsize=(8, 6))
+        sns.heatmap(corr, annot=True, cmap="coolwarm", center=0, fmt=".2f", cbar=True)
+        plt.title(title)
+        plt.tight_layout()
+
+        # Save to bytes buffer
+        buf = io.BytesIO()
+        plt.savefig(buf, format="png", dpi=80)
+        buf.seek(0)
+        plt.close()
+
+        # Encode to base64
+        img_base64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+        return img_base64
+
+    # Generate heatmaps for each timeframe
+    hm_early = generate_heatmap(tf["early"], "Correlation Heatmap: Early (1962-1989)")
+    hm_mid = generate_heatmap(tf["mid"], "Correlation Heatmap: Mid (1990-2004)")
+    hm_recent = generate_heatmap(tf["recent"], "Correlation Heatmap: Recent (2005-2017)")
+
+    # Build HTML with embedded images
+    html = """<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>GE Correlation Analysis</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  </head>
+  <body class="p-4">
+    <div class="container">
+      <h1>GE Correlation Analysis by Timeframe</h1>
+      <p>Correlation heatmaps showing relationships between numeric columns (Date, Open, High, Low, Close, Volume) in each period.</p>
+      <div class="row mt-4">
+"""
+
+    if hm_early:
+        html += f'<div class="col-md-4"><img src="data:image/png;base64,{hm_early}" alt="Early" style="width:100%;"></div>'
+    if hm_mid:
+        html += f'<div class="col-md-4"><img src="data:image/png;base64,{hm_mid}" alt="Mid" style="width:100%;"></div>'
+    if hm_recent:
+        html += f'<div class="col-md-4"><img src="data:image/png;base64,{hm_recent}" alt="Recent" style="width:100%;"></div>'
+
+    html += """      </div>
+      <div class="mt-4">
+        <p><a href="/">← Back to main</a></p>
+      </div>
+    </div>
+  </body>
+</html>"""
+
     return render_template_string(html)
 
 

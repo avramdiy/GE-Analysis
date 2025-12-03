@@ -16,6 +16,8 @@
 
 ### 3rd Commit
 
+- Added `/correlations` route to visualize correlation heatmaps for each timeframe (early, mid, recent). Heatmaps are generated using seaborn/matplotlib and embedded as base64 images in HTML. Updated `requirements.txt` to include `matplotlib` and `seaborn`.
+
 ### 4th Commit
 
 ### 5th Commit
