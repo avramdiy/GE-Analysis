@@ -23,3 +23,5 @@
 - Added `/volume_chart` route to display bar charts of volume statistics (mean, median, max, min) for each timeframe. Charts are generated using matplotlib and embedded as base64 images in HTML.
 
 ### 5th Commit
+
+- Added `/candlestick` route to display candlestick charts for each timeframe (last 100 trading days per period). Charts show open, high, low, close prices with green candles (up days: close ≥ open) and red candles (down days: close < open). Charts are generated using matplotlib and embedded as base64 images.

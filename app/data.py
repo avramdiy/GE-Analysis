@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import io
 import base64
+import numpy as np
 
 app = Flask(__name__)
 
@@ -249,6 +250,104 @@ def volume_chart():
         html += f'<div class="col-md-4"><img src="data:image/png;base64,{bc_mid}" alt="Mid" style="width:100%;"></div>'
     if bc_recent:
         html += f'<div class="col-md-4"><img src="data:image/png;base64,{bc_recent}" alt="Recent" style="width:100%;"></div>'
+
+    html += """      </div>
+      <div class="mt-4">
+        <p><a href="/">← Back to main</a></p>
+      </div>
+    </div>
+  </body>
+</html>"""
+
+    return render_template_string(html)
+
+
+@app.route("/candlestick")
+def candlestick():
+    """Generate and display candlestick charts for each timeframe."""
+    tf = TIMEFRAMES
+
+    def generate_candlestick(df, title, max_candles=100):
+        """Generate a base64-encoded candlestick chart."""
+        if not all(col in df.columns for col in ["Date", "Open", "High", "Low", "Close"]):
+            return None
+
+        # Use last N candles for readability
+        df_plot = df.tail(max_candles).reset_index(drop=True)
+
+        # Create figure
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+        # Define colors: green for up days, red for down days
+        for idx, row in df_plot.iterrows():
+            date_idx = idx
+            open_price = row["Open"]
+            high_price = row["High"]
+            low_price = row["Low"]
+            close_price = row["Close"]
+
+            # Determine color
+            color = "green" if close_price >= open_price else "red"
+
+            # Draw high-low line (wick)
+            ax.plot([date_idx, date_idx], [low_price, high_price], color=color, linewidth=0.5)
+
+            # Draw open-close rectangle (body)
+            body_height = abs(close_price - open_price)
+            body_bottom = min(open_price, close_price)
+            rect = plt.Rectangle(
+                (date_idx - 0.3, body_bottom),
+                0.6,
+                body_height,
+                facecolor=color,
+                edgecolor=color,
+                linewidth=0.8,
+            )
+            ax.add_patch(rect)
+
+        ax.set_xlabel("Date Index")
+        ax.set_ylabel("Price")
+        ax.set_title(title)
+        ax.grid(True, alpha=0.3)
+        plt.tight_layout()
+
+        # Save to bytes buffer
+        buf = io.BytesIO()
+        plt.savefig(buf, format="png", dpi=80)
+        buf.seek(0)
+        plt.close()
+
+        # Encode to base64
+        img_base64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+        return img_base64
+
+    # Generate candlestick charts for each timeframe
+    cs_early = generate_candlestick(tf["early"], "Candlestick Chart: Early (1962-1989, last 100 trading days)")
+    cs_mid = generate_candlestick(tf["mid"], "Candlestick Chart: Mid (1990-2004, last 100 trading days)")
+    cs_recent = generate_candlestick(tf["recent"], "Candlestick Chart: Recent (2005-2017, last 100 trading days)")
+
+    # Build HTML with embedded images
+    html = """<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>GE Candlestick Analysis</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  </head>
+  <body class="p-4">
+    <div class="container">
+      <h1>GE Candlestick Charts by Timeframe</h1>
+      <p>Candlestick charts showing the last 100 trading days of each period. Green = close ≥ open (up day), Red = close < open (down day).</p>
+      <div class="row mt-4">
+"""
+
+    if cs_early:
+        html += f'<div class="col-md-12 mb-4"><img src="data:image/png;base64,{cs_early}" alt="Early" style="width:100%;"></div>'
+    if cs_mid:
+        html += f'<div class="col-md-12 mb-4"><img src="data:image/png;base64,{cs_mid}" alt="Mid" style="width:100%;"></div>'
+    if cs_recent:
+        html += f'<div class="col-md-12 mb-4"><img src="data:image/png;base64,{cs_recent}" alt="Recent" style="width:100%;"></div>'
 
     html += """      </div>
       <div class="mt-4">
